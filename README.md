@@ -1,1 +1,1 @@
-# timemoto-cli
+# Timemoto CLI
