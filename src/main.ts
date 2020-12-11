@@ -1,14 +1,14 @@
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
 
-const c = require('ansi-colors');
-const inquirer = require('inquirer');
+import * as c from 'ansi-colors'
+import inquirer from 'inquirer'
 
-const timemoto = require('./timemoto');
-const { formatDate, formatDuration } = require('./format');
+import * as timemoto from './timemoto'
+import { formatDate, formatDuration } from './format'
 
-const CONFIG_PATH=".config/timemoto-cli/config.json";
+const CONFIG_PATH = '.config/timemoto-cli/config.json';
 
 async function main() {
     const config = await ensureConfig();

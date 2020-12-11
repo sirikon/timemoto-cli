@@ -1,6 +1,6 @@
-const querystring = require('querystring');
-const axios = require('axios').default;
-const { JSDOM } = require("jsdom");
+import querystring from 'querystring'
+import axios from 'axios'
+import { JSDOM } from 'jsdom'
 
 const TIMEMOTO_HOST = 'app.timemoto.com'
 const TIMEMOTO_BASE_URL = `https://${TIMEMOTO_HOST}`;
@@ -8,7 +8,7 @@ const TIMEMOTO_LOGIN_URL = `${TIMEMOTO_BASE_URL}/Account/Login?ReturnUrl=%2F`;
 const TIMEMOTO_DAYS_URL = `${TIMEMOTO_BASE_URL}/Reports/Day_GridRead`;
 const TIMEMOTO_COOKIE_CONSENT_LEVEL = '%7B%22strictly-necessary%22%3Atrue%2C%22functionality%22%3Atrue%2C%22tracking%22%3Atrue%2C%22targeting%22%3Atrue%7D';
 
-async function login(username, password) {
+export async function login(username, password) {
     const loginPageResponse = await axios.get(TIMEMOTO_LOGIN_URL);
     const loginPageDOM = new JSDOM(loginPageResponse.data);
     const csrfToken = loginPageDOM.window.document.querySelector('form input[name="__RequestVerificationToken"]').getAttribute('value');
@@ -41,7 +41,7 @@ async function login(username, password) {
     };
 }
 
-async function getDays(auth, from, to) {
+export async function getDays(auth, from, to) {
     const requestBody = querystring.stringify({
         "sort": "UserId-asc",
         "page": "1",
@@ -117,9 +117,4 @@ function zeroPad(number) {
         result = '0' + result;
     }
     return result;
-}
-
-module.exports = {
-    login,
-    getDays
 }
