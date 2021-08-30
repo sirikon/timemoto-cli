@@ -1,19 +1,13 @@
-import fs from 'fs'
-import path from 'path'
-import os from 'os'
-
 import * as c from 'ansi-colors'
-import inquirer from 'inquirer'
 
 import * as timemoto from './timemoto'
 import { formatDate, formatDuration } from './format'
-
-const CONFIG_PATH = '.config/timemoto-cli/config.json';
+import { ensureConfig } from './config/config';
 
 async function main() {
     const config = await ensureConfig();
 
-    const auth = await timemoto.login(config.credentials.username, config.credentials.password);
+    const auth = await timemoto.login(config.credentials);
     const days = await timemoto.getDays(
         auth,
         new Date(Date.UTC(2020, 7, 10)),
@@ -26,33 +20,6 @@ async function main() {
         }
         console.log(`${formatDate(day.date)} -> ${formatDuration(day.duration)}`);
     });
-}
-
-async function ensureConfig() {
-    const configPath = path.join(os.homedir(), CONFIG_PATH);
-    if (fs.existsSync(configPath)) {
-        return JSON.parse(fs.readFileSync(configPath, { encoding: 'utf8' }));
-    }
-    fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    const credentials = await askCredentials();
-    const config = { credentials };
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', { encoding: 'utf8' });
-    return config;
-}
-
-async function askCredentials() {
-    return await inquirer.prompt([
-        {
-            type: 'input',
-            name: 'username',
-            message: 'Username',
-        },
-        {
-            type: 'password',
-            name: 'password',
-            message: 'Password',
-        },
-    ])
 }
 
 main().then(() => {}, (err) => console.log(err));

@@ -1,6 +1,7 @@
 import querystring from 'querystring'
 import axios from 'axios'
 import { JSDOM } from 'jsdom'
+import { Config } from './config/config';
 
 const TIMEMOTO_HOST = 'app.timemoto.com'
 const TIMEMOTO_BASE_URL = `https://${TIMEMOTO_HOST}`;
@@ -8,10 +9,18 @@ const TIMEMOTO_LOGIN_URL = `${TIMEMOTO_BASE_URL}/Account/Login?ReturnUrl=%2F`;
 const TIMEMOTO_DAYS_URL = `${TIMEMOTO_BASE_URL}/Reports/Day_GridRead`;
 const TIMEMOTO_COOKIE_CONSENT_LEVEL = '%7B%22strictly-necessary%22%3Atrue%2C%22functionality%22%3Atrue%2C%22tracking%22%3Atrue%2C%22targeting%22%3Atrue%7D';
 
-export async function login(username, password) {
+export type TimemotoSession = {
+    cookies: {
+        auth: string
+        csrf: string
+    }
+}
+
+export async function login({ username, password }: Config['credentials']): Promise<TimemotoSession> {
     const loginPageResponse = await axios.get(TIMEMOTO_LOGIN_URL);
     const loginPageDOM = new JSDOM(loginPageResponse.data);
-    const csrfToken = loginPageDOM.window.document.querySelector('form input[name="__RequestVerificationToken"]').getAttribute('value');
+
+    const csrfToken = loginPageDOM.window.document.querySelector('form input[name="__RequestVerificationToken"]')!.getAttribute('value');
     const csrfCookie = loginPageResponse.headers['set-cookie'][0].split(';')[0].split('=')[1];
 
     const loginRequestBody = querystring.stringify({
@@ -35,13 +44,16 @@ export async function login(username, password) {
     }
 
     const authCookie = loginResponse.headers['set-cookie'][0].split(';')[0].split('=')[1];
+
     return {
-        authCookie,
-        csrfCookie
+        cookies: {
+            auth: authCookie,
+            csrf: csrfCookie
+        }
     };
 }
 
-export async function getDays(auth, from, to) {
+export async function getDays(session: TimemotoSession, from: Date, to: Date) {
     const requestBody = querystring.stringify({
         "sort": "UserId-asc",
         "page": "1",
@@ -56,9 +68,9 @@ export async function getDays(auth, from, to) {
     const response = await axios.post(TIMEMOTO_DAYS_URL, requestBody, {
         headers: {
             'Cookie': buildCookies({
-                __RequestVerificationToken: auth.csrfCookie,
+                __RequestVerificationToken: session.cookies.csrf,
                 cookie_consent_level: TIMEMOTO_COOKIE_CONSENT_LEVEL,
-                '.AspNet.Cookies.Admin': auth.authCookie,
+                '.AspNet.Cookies.Admin': session.cookies.auth,
                 cookie_consent_user_accepted: 'true'
             })
         }
@@ -67,34 +79,31 @@ export async function getDays(auth, from, to) {
     return parseDays(response.data);
 }
 
-function buildCookies(cookies) {
-    const result = [];
-    Object.keys(cookies).forEach(k => {
-        result.push(`${k}=${cookies[k]}`);
-    });
-    return result.join('; ');
+function buildCookies(cookies: Record<string, string>) {
+    return Object.entries(cookies)
+        .map(([key, value]) => `${key}=${value}`)
+        .join('; ');
 }
 
-function parseDays(daysResponseData) {
+function parseDays(daysResponseData: any): { date: Date, duration: number }[] {
     return daysResponseData.Data.map(parseDay);
 }
 
-function parseDay(day) {
-    //return day;
+function parseDay(day: any) {
     return {
         date: getDateFromRowId(day.RowId),
         duration: day.Duration
     }
 }
 
-function getDateFromRowId(rid) {
+function getDateFromRowId(rid: string) {
     const year = parseInt(rid.substr(0,4));
     const month = parseInt(rid.substr(4,2));
     const day = parseInt(rid.substr(6,2));
     return new Date(Date.UTC(year, month-1, day));
 }
 
-function formatDateForRequest(date) {
+function formatDateForRequest(date: Date) {
     return [
         date.getUTCFullYear(),
         '-',
@@ -111,7 +120,7 @@ function formatDateForRequest(date) {
     ].join('');
 }
 
-function zeroPad(number) {
+function zeroPad(number: number) {
     let result = number.toString();
     if (result.length === 1) {
         result = '0' + result;
