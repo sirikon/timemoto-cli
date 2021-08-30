@@ -1,6 +1,6 @@
 import * as c from 'ansi-colors'
 
-import * as timemoto from './timemoto'
+import * as timemoto from './timemoto/index'
 import { formatDate, formatDuration } from './format'
 import { ensureConfig } from './config/config';
 

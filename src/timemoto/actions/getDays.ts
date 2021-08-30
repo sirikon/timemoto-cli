@@ -1,59 +1,12 @@
 import querystring from 'querystring'
 import axios from 'axios'
-import { JSDOM } from 'jsdom'
-import { Config } from './config/config';
 
-const TIMEMOTO_HOST = 'app.timemoto.com'
-const TIMEMOTO_BASE_URL = `https://${TIMEMOTO_HOST}`;
-const TIMEMOTO_LOGIN_URL = `${TIMEMOTO_BASE_URL}/Account/Login?ReturnUrl=%2F`;
+import { TIMEMOTO_BASE_URL, TIMEMOTO_COOKIE_CONSENT_LEVEL } from '../config';
+import { TimemotoSession, WorkingDay } from "../types";
+
 const TIMEMOTO_DAYS_URL = `${TIMEMOTO_BASE_URL}/Reports/Day_GridRead`;
-const TIMEMOTO_COOKIE_CONSENT_LEVEL = '%7B%22strictly-necessary%22%3Atrue%2C%22functionality%22%3Atrue%2C%22tracking%22%3Atrue%2C%22targeting%22%3Atrue%7D';
 
-export type TimemotoSession = {
-    cookies: {
-        auth: string
-        csrf: string
-    }
-}
-
-export async function login({ username, password }: Config['credentials']): Promise<TimemotoSession> {
-    const loginPageResponse = await axios.get(TIMEMOTO_LOGIN_URL);
-    const loginPageDOM = new JSDOM(loginPageResponse.data);
-
-    const csrfToken = loginPageDOM.window.document.querySelector('form input[name="__RequestVerificationToken"]')!.getAttribute('value');
-    const csrfCookie = loginPageResponse.headers['set-cookie'][0].split(';')[0].split('=')[1];
-
-    const loginRequestBody = querystring.stringify({
-        __RequestVerificationToken: csrfToken,
-        Email: username,
-        Password: password
-    });
-
-    const loginResponse = await axios.post(TIMEMOTO_LOGIN_URL, loginRequestBody, {
-        maxRedirects: 0,
-        validateStatus: function (status) {
-            return status >= 200 && status < 400;
-        },
-        headers: {
-            'Cookie': `__RequestVerificationToken=${csrfCookie}; cookie_consent_level=${TIMEMOTO_COOKIE_CONSENT_LEVEL}`
-        }
-    });
-
-    if (!loginResponse.headers['set-cookie']) {
-        throw new Error("Login failed");
-    }
-
-    const authCookie = loginResponse.headers['set-cookie'][0].split(';')[0].split('=')[1];
-
-    return {
-        cookies: {
-            auth: authCookie,
-            csrf: csrfCookie
-        }
-    };
-}
-
-export async function getDays(session: TimemotoSession, from: Date, to: Date) {
+export async function getDays(session: TimemotoSession, from: Date, to: Date): Promise<WorkingDay[]> {
     const requestBody = querystring.stringify({
         "sort": "UserId-asc",
         "page": "1",
